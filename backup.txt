@@ -1,0 +1,160 @@
+#!/bin/dash   
+
+# projet find.sh 
+# Akel Ward , Aiach Rami
+
+# Permet l'affichage de la commande help quand on en a besoin 
+# pas de paramètres attendu
+usage (){
+    echo "usage:
+        ./version.sh --help
+        ./version.sh <command> FILE [OPTION]
+        where <command> can be: add amend checkout|co commit|ci diff log reset rm"
+
+    echo "./version.sh add FILE MESSAGE
+            Add FILE under versioning with the initial log message MESSAGE"
+
+    echo "./version.sh commit|ci FILE MESSAGE
+            Commit a new version of FILE with the log message MESSAGE"
+
+    echo "./version.sh amend FILE MESSAGE
+            Modify the last registered version of FILE, or (inclusive) its log message"
+
+    echo "./version.sh checkout|co FILE [NUMBER]
+            Restore FILE in the version NUMBER indicated, or in the
+            latest version if there is no number passed in argument"
+
+    echo "./version.sh diff FILE
+            Displays the difference between FILE and the last committed version"
+
+    echo "./version.sh log FILE
+            Displays the logs of the versions already committed"
+
+    echo "./version.sh reset FILE NUMBER
+            Restores FILE in the version NUMBER indicated and
+            deletes the versions of number strictly superior to NUMBER"
+
+    echo "./version.sh rm FILE
+            Deletes all versions of a file under versioning"
+}
+
+
+# affiche l'aide
+help (){
+    echo "Entrer ./version.sh --help for more information." >&2
+}
+
+
+# Implémenter une fonction de la commande add qui permet d’ajouter un fichier sous versioning et sauvegarde la version 1, qui est également la dernière version dans ce cas.
+# Ne se préoccuper pas du message de log associé à la première version du fichier.
+# Usage : ./version.sh add FILE MESSAGE
+# FILE est le nom du fichier à ajouter sous versioning.
+# MESSAGE est le message de log associé à la première version du fichier.
+# Le fichier doit être ajouté dans le répertoire .versioning du répertoire courant.
+
+add (){
+    if test $# -ne 2 ; then
+        echo "Erreur commande add"
+        help
+        exit 1
+    fi
+
+    if test -f $1 ; then
+        if test -d .versioning ; then
+            if test -f .versioning/$1 ; then
+                echo "Erreur commande add"
+                echo "Le fichier $1 est déjà sous versioning."
+                exit 1
+            else
+                mkdir .versioning/$1
+                cp $1 .versioning/$1/1
+                echo $2 > .versioning/$1/1.log
+                echo "Le fichier $1 a été ajouté sous versioning."
+                exit 0
+            fi
+        else
+            mkdir .versioning
+            mkdir .versioning/$1
+            cp $1 .versioning/$1/1
+            echo $2 > .versioning/$1/1.log
+            echo "Le fichier $1 a été ajouté sous versioning."
+            exit 0
+        fi
+    else
+        echo "Erreur commande add"
+        echo "Le fichier $1 n'existe pas."
+        exit 1
+    fi
+}
+
+
+# Implémenter une fonction de la commande rm qui supprime toutes les versions d’un fichier sous contrôle. Demander une confirmation de la part de l’utilisateur.
+#Supprimer le répertoire .versioning s’il est vide.
+# Usage : ./version.sh rm FILE
+# FILE est le nom du fichier à supprimer sous versioning.
+
+rm (){
+    if test $# -ne 1 ; then
+        echo "Erreur commande rm"
+        help
+        exit 1
+    fi
+
+    if test -f $1 ; then
+        if test -d .versioning ; then
+            if test -f .versioning/$1 ; then
+                echo "Voulez-vous vraiment supprimer le fichier $1 ? (y/n)"
+                read reponse
+                if test $reponse = "y" ; then
+                    rm -r .versioning/$1
+                    echo "Le fichier $1 a été supprimé."
+                    exit 0
+                else
+                    echo "Le fichier $1 n'a pas été supprimé."
+                    exit 0
+                fi
+            else
+                echo "Erreur commande rm"
+                echo "Le fichier $1 n'est pas sous versioningggggggggggggggggg."
+                exit 1
+            fi
+        else
+            echo "Erreur commande rm"
+            echo "Le fichier $1 n'est pas sous versioning."
+            exit 1
+        fi
+    else
+        echo "Erreur commande rm"
+        echo "Le fichier $1 n'existe pas."
+        exit 1
+    fi
+}
+
+
+
+if test $# -eq 1 && test $1 = "--help" ; then
+    usage
+    exit 0
+fi
+
+if test $# -eq 0 ; then
+    echo "Erreur commande"
+    help
+    exit 1
+fi
+
+if test $# -ge 1 ; then
+    case $1 in
+        add)
+            add $2 $3
+            ;;
+        rm)
+            rm $2
+            ;;
+        *)
+            echo "Erreur commande"
+            help
+            exit 1
+            ;;
+    esac
+fi
