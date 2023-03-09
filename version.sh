@@ -72,7 +72,12 @@ addCommande (){
     cp "$1" ".versioning/$1.v1"
 
     # Écrire le message de log associé à la première version
-    echo "$2" > ".versioning/$1.log"
+    if [ -z "$2" || "$2" != "$(echo "$2" | tr -d '\n')" ]; then
+        echo "Erreur : le commentaire est vide ou contient des sauts de ligne"
+        exit 1
+    fi
+    
+    echo "$(date -R) '$(echo "$2" | tr -d '[:space:]')'" >> ".versioning/$1.log"
 
     echo "Le fichier $1 a été ajouté sous versioning avec succès"
 }
@@ -149,7 +154,12 @@ commitCommande (){
     cp "$1" ".versioning/$1.v$((last_version + 1))"
 
     # Écrire le message de log associé à la nouvelle version
-    echo "$2" >> ".versioning/$1.log"
+    if [ -z "$2" || "$2" != "$(echo "$2" | tr -d '\n')" ]; then
+        echo "Erreur : le commentaire est vide ou contient des sauts de ligne"
+        exit 1
+    fi
+    
+    echo "$(date -R) '$(echo "$2" | tr -d '[:space:]')'" >> ".versioning/$1.log"
 
     echo "La nouvelle version du fichier $1 a été sauvegardée avec succès"
 }
@@ -232,6 +242,130 @@ checkoutCommande (){
 }
 
 
+# Usage : ./version.sh log FILE
+# FILE est le nom du fichier dont on veut afficher les logs.
+
+logCommande (){
+    # Vérifier les arguments
+    if [ $# -ne 1 ]; then
+        echo "Usage : $0 log FILE"
+        exit 1
+    fi
+
+    # Vérifier si le fichier existe dans le répertoire .versioning
+    if [ ! -f ".versioning/$1.v1" ]; then
+        echo "Erreur : $1 n'est pas sous versioning"
+        exit 1
+    fi
+    
+    # Afficher le fichier de log
+    nl -s ' : ' ".versioning/$1.log"
+}
+
+
+# Usage : ./version.sh reset FILE [NUMBER]
+# FILE est le nom du fichier à restaurer.
+# NUMBER est le numéro de la version à restaurer.
+
+resetCommande (){
+    # Vérifier les arguments
+    if [ $# -ne 2 ]; then
+        echo "Usage : $0 reset FILE [NUMBER]"
+        exit 1
+    fi
+
+    # Vérifier si le fichier existe dans le répertoire .versioning
+    if [ ! -f ".versioning/$1.v1" ]; then
+        echo "Erreur : $1 n'est pas sous versioning"
+        exit 1
+    fi
+
+    # Vérifier le numéro de la dernière version
+    last_version=$(ls -1 .versioning | grep "$1.v" | sort -n | tail -1 | cut -d'.' -f3 | cut -d'v' -f2)
+
+    # Vérifier si le fichier courant est identique à la dernière version
+    if cmp -s "$1" ".versioning/$1.v$last_version"; then
+        echo "Le fichier $1 n'a pas été modifié"
+        echo "Il n'y a pas de différence entre la dernière version et le fichier courant"
+        exit 0
+    fi
+    
+    # Vérifier si le numéro de version est spécifié
+    if [ $# -eq 2 ]; then
+        # Vérifier si le numéro de version est valide
+        if [ $2 -lt 1 ] || [ $2 -gt $last_version ]; then
+            echo "Erreur : le numéro de version doit être compris entre 1 et $last_version"
+            exit 1
+        fi
+
+        # Restaurer la version spécifiée
+        cp ".versioning/$1.v$2" "$1"
+        echo "La version $2 du fichier $1 a été restaurée avec succès"
+        
+        # Supprimer les versions du numéro strictement supérieur au numéro de version spécifié.
+        # les logs des versions supprimées sont également supprimés.
+        while [ $last_version -gt $2 ]; do
+            rm ".versioning/$1.v$last_version"
+            sed -i "$last_version d" ".versioning/$1.log"
+            last_version=$((last_version-1))
+        done
+    else
+        # Restaurer la dernière version
+        cp ".versioning/$1.v$last_version" "$1"
+        echo "La dernière version du fichier $1 a été restaurée avec succès"
+    fi
+}
+
+
+# Usage : ./version.sh amend FILE [MESSAGE]
+# FILE est le nom du fichier à restaurer.
+# MESSAGE est le message de log de la version.
+
+amendCommande (){
+    # Vérifier les arguments
+    if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+        echo "Usage : $0 amend FILE [MESSAGE]"
+        exit 1
+    fi
+
+    # Vérifier si le fichier existe dans le répertoire .versioning
+    if [ ! -f ".versioning/$1.v1" ]; then
+        echo "Erreur : $1 n'est pas sous versioning"
+        exit 1
+    fi
+
+    # Vérifier le numéro de la dernière version
+    last_version=$(ls -1 .versioning | grep "$1.v" | sort -n | tail -1 | cut -d'.' -f3 | cut -d'v' -f2)
+
+    # Vérifier si le fichier courant est identique à la dernière version
+    if cmp -s "$1" ".versioning/$1.v$last_version"; then
+        echo "Le fichier $1 n'a pas été modifié"
+        echo "Il n'y a pas de différence entre la dernière version et le fichier courant"
+        exit 0
+    fi
+
+    # Vérifier si le message de log est spécifié
+    if [ $# -eq 2 ]; then
+        # Modifier le message de log de la dernière version
+        sed -i "$last_version s/.*/$2/" ".versioning/$1.log"
+        echo "Le message de log de la version $last_version du fichier $1 a été modifié avec succès"
+    fi
+
+    # Restaurer la dernière version
+    cp "$1" ".versioning/$1.v$last_version"
+    echo "La dernière version du fichier $1 a été restaurée avec succès"
+}
+
+
+
+
+
+
+
+
+
+
+
 # main
 if test $# -eq 1 && test $1 = "--help" ; then
     usage
@@ -256,6 +390,15 @@ else
             ;;
         checkout|co)
             checkoutCommande $2 $3
+            ;;
+        log)
+            logCommande $2
+            ;;
+        reset)
+            resetCommande $2 $3
+            ;;
+        amend)
+            amendCommande $2 $3
             ;;
         *)
             echo "Erreur commande"
