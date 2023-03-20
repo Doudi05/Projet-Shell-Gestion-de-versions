@@ -157,4 +157,9 @@ if test $# -ge 1 ; then
             exit 1
             ;;
     esac
-fi
+fitest
+test
+test xccssc
+test xzzccssc
+test ssxzzccssc
+test ssxzxxzccssc

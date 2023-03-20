@@ -3,26 +3,6 @@
 # project version.sh 
 # AKEL Ward , AIACH Rami , TD2/TP2B
 
-# Le projet consiste à créer un script shell qui permet de gérer les versions d'un fichier.
-# Le script doit permettre de :
-# - ajouter un fichier sous versioning
-# - enregistrer une nouvelle version d'un fichier
-# - modifier la dernière version d'un fichier
-# - restaurer un fichier à une version précédente
-# - supprimer toutes les versions d'un fichier
-# - afficher les différences entre deux versions d'un fichier
-# - afficher les logs des versions d'un fichier
-
-# Certaines options n'ont pas été faites telles que :
-# - afficher correctement les commentaires dans les logs : gestion des simples quotes, etc...
-# - appliquer l'extension .latest à la dernière version d'un fichier
-
-# Bilan sur le travail en binôme :
-# le travail a été réparti de manière égale entre les deux membres du binôme.
-# chaque membre a implementé sa propre commande, et nous avons pris le meilleur des deux à la fin.
-# les deux tâches principales ont été l'implementation des commandes et le debuggage.
-# nous avons eu quelques difficultés notamment pour les expressions régulières.
-
 # the display of the help command
 # No parameters expected
 usage (){
@@ -164,7 +144,7 @@ commitCommande (){
         echo "Error! $1 is not under versioning."
         exit 1
     fi
-
+    
     # Check if the current file is identical to the latest version
     last_version=$(ls -1 .versioning | grep "$1." | cut -d '.' -f 3 | sort -n | tail -1)
 
@@ -284,7 +264,7 @@ resetCommande (){
 
     # Check the number of last version
     last_version=$(ls -1 .versioning | grep "$1." | cut -d '.' -f 3 | sort -n | tail -1)
-
+    
     # Check if the version number is specified
     if [ $# -eq 2 ]; then
         # Check if the version number is valide
@@ -296,7 +276,7 @@ resetCommande (){
             checkoutCommande $1 $2
             exit 0
         fi
-
+        
         if $(cmp -s "$1" ".versioning/$1.$2"); then
             echo "The file $1 has not been modified since the last commit."
             echo "No difference between the current version and the version $2."
@@ -345,6 +325,13 @@ amendCommande (){
     # Check the latest version number
     last_version=$(ls -1 .versioning | grep "$1." | cut -d '.' -f 3 | sort -n | tail -1)
 
+    # Check if the current file is identical to the latest version
+    if $(cmp -s "$1" ".versioning/$1.$last_version"); then
+        echo "The file $1 has not been modified"
+        echo "ther is no differenece between the last version and the current version"
+        exit 0
+    fi
+
     # Check if log message is specified
     if [ $# -eq 2 ]; then
         # Modify the last version log message keeping the date of the last version
@@ -353,13 +340,6 @@ amendCommande (){
         echo "The log message of the last version of the file $1 has been modified successfully"
     fi
 
-    # Check if the current file is identical to the latest version
-    if $(cmp -s "$1" ".versioning/$1.$last_version"); then
-        echo "The file $1 has not been modified since the last commit."
-        echo "No difference between the current version and the last version $last_version."
-        exit 1
-    fi
-    
     # Restore the last version
     cp "$1" ".versioning/$1.$last_version"
     echo "The last version of the file $1 has been restored successfully"
@@ -367,7 +347,11 @@ amendCommande (){
 }
 
 
-################# MAIN ######################
+
+
+
+
+# main
 if test $# -eq 1 && test $1 = "--help" ; then
     usage
     exit 0
